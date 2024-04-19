@@ -1,9 +1,8 @@
 import "./App.css";
 
-import { TextStyle } from "pixi.js";
-import { Stage, Container, Sprite, Text, Graphics } from "@pixi/react";
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
-import * as PIXI from 'pixi.js';
+import { Application, Assets, Container, Graphics, Sprite, TextStyle } from "pixi.js";
+import { Stage, Text } from "@pixi/react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 function App() {
 	const lm = [
@@ -76,42 +75,141 @@ function App() {
 		},
 	];
 
-	const rectangle = useCallback((g, props) => {
-		g.clear();
-		g.beginFill(0xff700b, 1);
-		g.drawRect(props.x, props.y, props.width, props.height);
-		g.endFill();
-	}, [lm]);
+	const rectangle = useCallback(
+		(g, props) => {
+			g.clear();
+			g.beginFill(0xff700b, 1);
+			g.drawRect(-50, 0, props.width, props.height);
+			g.endFill();
+		},
+		[lm],
+	);
 
-	// const Rectangle = (() => {
+	const spriteRef = useRef([]);
+	const [trigger, setTrigger] = useState(false);
 
-	//   return <Graphics draw={rectangle} />
-	// });
-  const maskRef = useRef(null);
+	useEffect(() => {
+		let app = new Application();
+		let dragTarget;
 
-  useEffect(() => {
-    if (maskRef.current) {
-      maskRef.current.mask = new PIXI.Graphics()
-        .beginFill(0xffffff) // White color for the mask
-        .drawRect(0, 0, 200, 200) // Adjust dimensions as needed
-        .endFill();
-    }
-  }, []);
+		const generateMaskAndLayout = () => {
+			let mask = null;
+			let container = null;
+			let layout = null;
+			let containerArray = [];
+
+			lm.forEach((e, idx) => {
+				// Generate Mask
+				mask = new Graphics().rect(e.x, e.y, e.width, e.height);
+				mask.fill("white");
+
+				// Generate Container
+				container = new Container();
+				container.x = e.x;
+				container.y = e.y;
+				container.height = e.height;
+
+				// Adding Mask to Container
+				container.mask = mask;
+				container.eventMode = "static";
+				container.on('pointermove',(e)=>{
+					console.log(e)
+				})
+				container.on('pointerdown',(e)=>{
+					e.onDragMove(e)
+				})
 
 
+				// Generate Layout
+				layout = new Graphics().rect(0, 0, e.width, e.height).fill(0xff700b);
+				layout.cursor = "pointer";
+				layout.eventMode = "static";
+
+				layout.on("pointerdown", onDragStart);
+				layout.on("pointerup", onDragEnd);
+				layout.on("pointerupoutside", onDragEnd);
+				
+				container.addChild(layout);
+				containerArray.push(container);
+			});
+			return containerArray;
+		};
+
+		const init = async () => {
+			await app.init({ width: 1200, height: 1800 });
+
+			const stage = app.stage;
+
+			document.body.innerHTML = "";
+			document.body.appendChild(app.canvas);
+
+			const layoutMedia = generateMaskAndLayout();
+
+			const loadFrame = await Assets.load("/img/frame2.png");
+			const frame = new Sprite(loadFrame);
+
+			layoutMedia.forEach((el, index) => {
+				stage.addChild(el);
+			});
+
+			stage.addChild(frame);
+		};
+
+		function onDragStart() {
+			dragTarget = this;
+				dragTarget.alpha = .5;
+			this.on("pointermove", onDragMove);
+		}
+		function onDragMove(event) {
+			if (dragTarget) {
+				// dragTarget.parent.toLocal(event.global, null, dragTarget.position);
+			}
+		}
+		function onDragEnd() {
+			if (dragTarget) {
+				dragTarget.off("pointermove", onDragMove);
+				dragTarget.alpha = 1;
+				dragTarget = null;
+			}
+		}
+		init();
+	}, []);
+
+	const renderLayoutAndPhotos = useMemo(() => {
+		return;
+		return (
+			<>
+				{lm.map((e, idx) => (
+					<Container x={e.x} y={e.y} height={e.height} width={e.width} mask={spriteRef.current[idx]} key={idx}>
+						<Graphics
+							ref={(node) => {
+								if (node) {
+									spriteRef.current.push(node);
+								}
+								return spriteRef.current[idx];
+							}}
+							draw={(g) => rectangle(g, e)}
+						/>
+						<Sprite image={"https://s3-us-west-2.amazonaws.com/s.cdpn.io/693612/IaUrttj.png"} />
+					</Container>
+				))}
+			</>
+		);
+	}, [trigger]);
 
 	return (
-		<Stage width={1200} height={1800} options={{ background: 0x1099bb }}>
-			<Sprite image={"/img/frame2.png"} />
-			<Container x={0} y={0}  ref={maskRef}>
-				{lm.map((e, idx) => (
-					<React.Fragment key={idx}>
-						<Graphics isMask={true} draw={(g) => rectangle(g, e)}/>
-            <Sprite  image={'https://s3-us-west-2.amazonaws.com/s.cdpn.io/693612/IaUrttj.png'}/>
-					</React.Fragment>
-				))}
-			</Container>
-		</Stage>
+		<>
+			{/* <Stage ref={stageRef} width={1200} height={1800} options={{ background: 0x1099bb }}> */}
+			{/* {renderLayoutAndPhotos} */}
+			{/* <Sprite image={"/img/frame2.png"} /> */}
+			{/* </Stage> */}
+			{/* <button
+				onClick={() => {
+					setTrigger(!trigger);
+				}}>
+				asd
+			</button> */}
+		</>
 	);
 }
 
