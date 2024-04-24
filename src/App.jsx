@@ -111,24 +111,16 @@ function App() {
 
 				// Adding Mask to Container
 				container.mask = mask;
+				container.cursor = "pointer";
 				container.eventMode = "static";
-				container.on('pointermove',(e)=>{
-					console.log(e)
-				})
-				container.on('pointerdown',(e)=>{
-					e.onDragMove(e)
-				})
-
 
 				// Generate Layout
-				layout = new Graphics().rect(0, 0, e.width, e.height).fill(0xff700b);
+				layout = new Graphics().rect(0, 0, 700, 700).fill(0xff700b);
 				layout.cursor = "pointer";
 				layout.eventMode = "static";
 
-				layout.on("pointerdown", onDragStart);
-				layout.on("pointerup", onDragEnd);
-				layout.on("pointerupoutside", onDragEnd);
-				
+				layout.on("pointerdown", onDragStart,layout);
+
 				container.addChild(layout);
 				containerArray.push(container);
 			});
@@ -148,8 +140,14 @@ function App() {
 			const loadFrame = await Assets.load("/img/frame2.png");
 			const frame = new Sprite(loadFrame);
 
-			layoutMedia.forEach((el, index) => {
-				stage.addChild(el);
+
+			stage.eventMode = "static";
+			stage.hitArea = app.screen;
+			stage.on('pointerup', onDragEnd);
+			stage.on('pointerupoutside', onDragEnd);
+
+			layoutMedia.forEach((masking, index) => {
+				stage.addChild(masking);
 			});
 
 			stage.addChild(frame);
@@ -157,15 +155,28 @@ function App() {
 
 		function onDragStart() {
 			dragTarget = this;
-				dragTarget.alpha = .5;
-			this.on("pointermove", onDragMove);
+			dragTarget.alpha = 0.5;
+			app.stage.on("pointermove", onDragMove);
 		}
 		function onDragMove(event) {
 			if (dragTarget) {
-				// dragTarget.parent.toLocal(event.global, null, dragTarget.position);
+				const newX = event.global.x - dragTarget.width / 2;
+				const newY = event.global.y - dragTarget.height / 2;
+				const newGlobal = {
+					x: newX,
+					y: newY,
+				};
+				console.log(dragTarget);
+				console.log(event);
+				console.log(event.movement);
+				console.log(event.global);
+				// dragTarget.x = newX
+				// dragTarget.y = newY
+				dragTarget.parent.toLocal(newGlobal, null, dragTarget.position);
 			}
 		}
 		function onDragEnd() {
+			console.log('asd')
 			if (dragTarget) {
 				dragTarget.off("pointermove", onDragMove);
 				dragTarget.alpha = 1;
